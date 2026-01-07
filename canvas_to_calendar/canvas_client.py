@@ -1,6 +1,6 @@
 import requests
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 from dateutil.parser import parse
 from zoneinfo import ZoneInfo
@@ -61,18 +61,23 @@ class CanvasClient:
             due_utc = due_utc.replace(tzinfo=ZoneInfo("UTC"))
         return due_utc.astimezone(MOUNTAIN_TZ)
 
+    from datetime import timedelta
+
     def get_all_assignments(self) -> List[Assignment]:
-        """Fetch all assignments across all courses, convert to Mountain Time, and sort."""
+        """Fetch all assignments for courses with at least one recent due date."""
         results: List[Assignment] = []
+        cutoff = datetime.now(MOUNTAIN_TZ) - timedelta(weeks=2)  # 2 weeks ago
 
         for course in self.get_courses():
             course_name = course.get("name", "Unknown Course")
+            course_assignments: List[Assignment] = []
 
+            # Collect assignments with local due dates
             for a in self.get_assignments_for_course(course["id"]):
                 due_at = parse(a["due_at"]) if a.get("due_at") else None
                 due_at_local = self.canvas_to_mountain(due_at)
 
-                results.append(
+                course_assignments.append(
                     Assignment(
                         name=a["name"],
                         course_name=course_name,
@@ -80,6 +85,22 @@ class CanvasClient:
                     )
                 )
 
-        # Sort by due date, using a timezone-aware max for assignments without a due date
+            # Check if course has at least one assignment within the last 2 weeks
+            has_recent_due = any(
+                a.due_at is not None and a.due_at >= cutoff for a in course_assignments
+            )
+
+            # Skip entire course if no recent assignments
+            if not has_recent_due:
+                continue
+
+            # Include assignments:
+            # - dated assignments within the last 2 weeks
+            # - undated assignments
+            for a in course_assignments:
+                if a.due_at is None or a.due_at >= cutoff:
+                    results.append(a)
+
+        # Sort assignments by due date (undated assignments go to the end)
         results.sort(key=lambda x: x.due_at or datetime.max.replace(tzinfo=MOUNTAIN_TZ))
         return results
