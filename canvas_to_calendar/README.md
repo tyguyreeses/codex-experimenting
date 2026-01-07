@@ -13,4 +13,4 @@ This project scans my current courses from Canvas
 ## Setup
 ```bash
 pip install -r requirements.txt
-python src/main.py
+python main.py
