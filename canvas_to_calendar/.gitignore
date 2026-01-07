@@ -1,0 +1,9 @@
+.venv/
+venv/
+env/
+.env
+.env.*
+
+settings.py
+credentials.json
+token.json

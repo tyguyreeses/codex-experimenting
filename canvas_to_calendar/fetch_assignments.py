@@ -1,8 +1,6 @@
 """
 Scan current courses for all assignment due dates and print them.
-
-Currently implemented for Canvas LMS.
-Adapt the API calls if you use a different LMS.
+Canvas LMS version with Mountain Time (MST/MDT) conversion and shortened course names.
 """
 
 import requests
@@ -10,12 +8,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, List
 from dateutil.parser import parse
+from zoneinfo import ZoneInfo
 
 from settings import CANVAS_BASE_URL, CANVAS_API_TOKEN
 
-# =========================
-# MODELS
-# =========================
+MOUNTAIN_TZ = ZoneInfo("America/Denver")
 
 @dataclass
 class Assignment:
@@ -84,8 +81,14 @@ def main():
     print("-" * 60)
 
     for a in assignments:
-        due = a.due_at.strftime("%Y-%m-%d %H:%M") if a.due_at else "No due date"
-        print(f"{due:20} | {a.course_name} | {a.name}")
+        if a.due_at:
+            local_due = a.due_at.astimezone(MOUNTAIN_TZ)
+            due = local_due.strftime("%Y-%m-%d %H:%M")
+        else:
+            due = "No due date"
+
+        short_course = a.course_name.split("-")[0].strip()
+        print(f"{due:20} | {short_course} | {a.name}")
 
 if __name__ == "__main__":
     main()
