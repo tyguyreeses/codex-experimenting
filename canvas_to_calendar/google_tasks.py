@@ -1,5 +1,4 @@
 from datetime import timedelta, time
-from zoneinfo import ZoneInfo
 from typing import Iterable
 import os
 import pickle
@@ -10,7 +9,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.errors import HttpError
 
-from canvas_client import Assignment, MOUNTAIN_TZ
+from canvas_client import Assignment
 
 SCOPES = ["https://www.googleapis.com/auth/tasks"]
 
