@@ -5,6 +5,10 @@ def main():
     canvas = CanvasClient()
     assignments = canvas.get_all_assignments()
 
+    if len(assignments) == 0:
+        print("No current assignments found")
+        return
+
     print("Fetched assignments:")
     for a in assignments:
         due_str = a.due_at.strftime("%Y-%m-%d %H:%M %Z") if a.due_at else "No due date"
