@@ -4,4 +4,4 @@ env/
 .env
 .env.*
 
-config/settings.py
+settings.py
