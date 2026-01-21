@@ -1,19 +1,30 @@
 import argparse
 import asyncio
 import sys
+from typing import Optional, List
+
 import gradio as gr
 
 from openai import AsyncOpenAI
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from usage import print_usage, format_usage_markdown
 
-class Achievement(BaseModel):
-    achievement_title: str
-    achievement_message: str
-    reward_tier: str
+class RewardModel(BaseModel):
+    name: str
+    description: str = Field(description="The quality of the reward depends on reward_tier. This description is for flavor purposes")
+    benefits: str = Field(description="D&D style functionality descriptions")
 
+class BoxModel(BaseModel):
+    tier: str = Field(description="'bronze', 'silver', 'gold', 'platinum' or 'legendary'")
+    box_name: str
+    box_contents: List[RewardModel] = Field(description="The reward itself. There can be multiple small rewards")
+
+class AchievementModel(BaseModel):
+    achievement_title: str
+    achievement_desc: str
+    reward: Optional[BoxModel] = Field(None, description="Easy achievements don't always include a reward")
 
 class ChatAgent:
     def __init__(self, model: str, prompt: str):
@@ -29,10 +40,11 @@ class ChatAgent:
     async def get_response(self, user_message: str):
         self._history.append({'role': 'user', 'content': user_message})
 
-        response = await self._ai.responses.create(
+        response = await self._ai.responses.parse(
             input=self._history,
             model=self.model,
-            reasoning=self.reasoning
+            reasoning=self.reasoning,
+            text_format=AchievementModel
         )
         self.usage.append(response.usage)
         self._history.extend(
@@ -47,24 +59,71 @@ class ChatAgent:
         print_usage(self.model, self.usage)
 
 
+def _gradio_loop(agent):
+    # Constrain width with CSS and center
+    css = """
+    /* limit overall Gradio app width and center it */
+    .gradio-container, .gradio-app, .gradio-root {
+      width: 120ch;
+      max-width: 120ch !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+      box-sizing: border-box !important;
+    }
+    """
+
+    usage_view = gr.Markdown(format_usage_markdown(agent.model, []))
+
+    with gr.Blocks(css=css, theme=gr.themes.Monochrome()) as demo:
+        async def get_response(message, chat_view_history):
+            response = await agent.get_response(message)
+            usage_content = format_usage_markdown(agent.model, agent.usage)
+            return response, usage_content
+
+        with gr.Row():
+            with gr.Column(scale=5):
+                bot = gr.Chatbot(
+                    label=' ',
+                    height=600,
+                    resizable=True,
+                )
+                chat = gr.ChatInterface(
+                    chatbot=bot,
+                    fn=get_response,
+                    additional_outputs=[usage_view]
+                )
+
+            with gr.Column(scale=1):
+                usage_view.render()
+
+    demo.launch()
+
+
 async def _terminal_loop(agent: ChatAgent):
     while True:
         message = input("User: ")
         if not message:
             break
-        response = await agent.get_response(message, None)
+        response = await agent.get_response(message)
         print('Agent:', response)
 
 
-def main(model: str):
+def main(model: str, web: bool):
     with open("sys_prompt.md", "r") as f:
         prompt = f.read()
 
     with ChatAgent(model, prompt) as agent:
-        asyncio.run(_terminal_loop(agent))
+        if web:
+            _gradio_loop(agent)
+        else:
+            asyncio.run(_terminal_loop(agent))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('character_file', type=str)
+    parser.add_argument('--web', action='store_true')
     parser.add_argument('--model', default='gpt-5-nano')
+
+    args = parser.parse_args()
+    main(args.model, args.web)
