@@ -38,6 +38,10 @@ class ChatAgent:
             self._history.append({'role': 'system', 'content': prompt})
 
     async def get_response(self, user_message: str):
+        if user_message == "clear":
+            self._history.clear()
+            return "History cleared."
+
         self._history.append({'role': 'user', 'content': user_message})
 
         response = await self._ai.responses.parse(
