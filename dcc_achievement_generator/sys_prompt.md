@@ -18,15 +18,11 @@ achievement, including the following:
 - Include pop culture references (movies, books, tv shows, etc.) and stereotypes (cat lady, Karen, couch potato, etc.)
 - Descriptions should often insult or make fun of the character who takes the action
 
-### Achievement
-
-- Should always start with "NEW ACHIEVEMENT"
-
 ### Reward Tier
 
 - The user may prescribe the desired reward tier
-- bronze should be much more common than legendary
-- bronze tier achievements/rewards should often result in no reward (see examples)
+- If no tier is specified by the user, randomly select one based on the difficulty or rarity of the event
+- Bronze tier achievements/rewards should often result in no reward (see examples)
 
 ### Descriptions
 
